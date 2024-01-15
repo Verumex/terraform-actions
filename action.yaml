@@ -41,12 +41,6 @@ runs:
       working-directory: ${{ inputs.path }}
       run: terraform validate -no-color
 
-    - name: terraform fmt-check
-      id: fmt-check
-      shell: bash
-      working-directory: ${{ inputs.path }}
-      run: terraform fmt -recursive -no-color -check -diff
-
     - name: terraform plan
       id: plan
       shell: bash
@@ -69,9 +63,11 @@ runs:
           })
 
           // 2. Prepare format of the comment
-          const output = `#### Terraform plan in **${{ inputs.path }}**
+          let output = `#### Terraform plan in **${{ inputs.path }}**
           #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-          #### Validation 🤖\`${{ steps.validate.outcome }}\`
+          `;
+
+          output += `#### Validation 🤖\`${{ steps.validate.outcome }}\`
           <details><summary>Validation Output</summary>
 
           \`\`\`
@@ -79,15 +75,9 @@ runs:
           \`\`\`
           </details>
 
-          #### Format Check :memo:\`${{ steps.fmt-check.outcome }}\`
-          <details><summary>Format Check Output</summary>
+          `;
 
-          \`\`\`
-          ${{ steps.fmt-check.outputs.stdout }}
-          \`\`\`
-          </details>
-
-          #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+          output += `#### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
           <details><summary>Show Plan</summary>
 
           \`\`\`
@@ -95,7 +85,9 @@ runs:
           \`\`\`
           </details>
 
-          *Pusher: @${{ github.actor }}*`;
+          `;
+
+          output += `*Pusher: @${{ github.actor }}*`;
 
           // 3. If we have a comment, update it, otherwise create a new one
           if (botComment) {
