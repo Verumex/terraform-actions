@@ -37,27 +37,24 @@ runs:
 
     - name: terraform validate
       id: validate
-      continue-on-error: true
       shell: bash
       working-directory: ${{ inputs.path }}
       run: terraform validate -no-color
 
     - name: terraform fmt-check
       id: fmt-check
-      continue-on-error: true
       shell: bash
       working-directory: ${{ inputs.path }}
       run: terraform fmt -recursive -no-color -check -diff
 
     - name: terraform plan
       id: plan
-      continue-on-error: true
       shell: bash
       working-directory: ${{ inputs.path }}
       run: terraform plan -no-color
 
     - uses: actions/github-script@v6
-      if: github.event_name == 'pull_request'
+      if: always()
       with:
         github-token: ${{ inputs.github_token }}
         script: |
