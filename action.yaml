@@ -45,7 +45,7 @@ runs:
       id: plan
       shell: bash
       working-directory: ${{ inputs.path }}
-      run: terraform plan -no-color
+      run: terraform plan -no-color 2>&1
 
     - uses: actions/github-script@v6
       if: always()
