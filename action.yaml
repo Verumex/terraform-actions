@@ -1,0 +1,119 @@
+name: terraform plan
+description: Validates & Plan terraform configurations
+inputs:
+  github_token:
+    description: Github token
+    required: true
+  terraform_version:
+    description: Version of terraform
+    required: true
+    default: "1.5.7"
+  path:
+    description: path to terraform configurations
+    required: true
+    default: "./"
+outputs:
+  validate:
+    description: terraform validate output
+    value: ${{ steps.validate.outputs.stdout }}
+  fmt-check:
+    description: terraform linting output
+    value: ${{ steps.fmt-check.outputs.stdout }}
+  plan:
+    description: terraform plan output
+    value: ${{ steps.plan.outputs.stdout }}
+runs:
+  using: "composite"
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: terraform init
+      id: init
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: terraform init
+
+    - name: terraform validate
+      id: validate
+      continue-on-error: true
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: terraform validate -no-color
+
+    - name: terraform fmt-check
+      id: fmt-check
+      continue-on-error: true
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: terraform fmt -recursive -no-color -check -diff
+
+    - name: terraform plan
+      id: plan
+      continue-on-error: true
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: terraform plan -no-color
+
+    - uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          // 1. Retrieve existing bot comments for the PR
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          })
+          const botComment = comments.find(comment => {
+            return comment.user.type === 'Bot' && comment.body.includes('Terraform Initialization')
+          })
+
+          // 2. Prepare format of the comment
+          const output = `#### Terraform plan in **${{ inputs.path }}**
+          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+          #### Validation 🤖\`${{ steps.validate.outcome }}\`
+          <details><summary>Validation Output</summary>
+
+          \`\`\`
+          ${{ steps.validate.outputs.stdout }}
+          \`\`\`
+          </details>
+
+          #### Format Check :memo:\`${{ steps.fmt-check.outcome }}\`
+          <details><summary>Format Check Output</summary>
+
+          \`\`\`
+          ${{ steps.fmt-check.outputs.stdout }}
+          \`\`\`
+          </details>
+
+          #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+          <details><summary>Show Plan</summary>
+
+          \`\`\`
+          ${{ steps.plan.outputs.stdout }}
+          \`\`\`
+          </details>
+
+          *Pusher: @${{ github.actor }}*`;
+
+          // 3. If we have a comment, update it, otherwise create a new one
+          if (botComment) {
+            github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: output
+            })
+          }
+          else {
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+          }
