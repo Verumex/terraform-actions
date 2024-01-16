@@ -1,0 +1,33 @@
+name: terraform apply
+description: Apply a terraform configuration
+inputs:
+  terraform_version:
+    description: Version of terraform
+    required: true
+    default: "1.5.7"
+  path:
+    description: path to terraform configurations
+    required: true
+    default: "./"
+outputs:
+  apply:
+    description: terraform plan output
+    value: ${{ steps.apply.outputs.stdout }}
+runs:
+  using: "composite"
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: terraform init
+      id: init
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: terraform init
+
+    - name: terraform apply
+      id: apply
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: terraform apply -auto-approve -input=false -no-color 2>&1
