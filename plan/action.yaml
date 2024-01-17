@@ -52,18 +52,24 @@ runs:
       with:
         github-token: ${{ inputs.github_token }}
         script: |
+          const jobId = context.job;
+
           // 1. Retrieve existing bot comments for the PR
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: context.issue.number,
           })
+
+          // To identify a correct bot comment when many plan comments exist
+          const commentToken = `Terraform plan in **${jobId}**`;
           const botComment = comments.find(comment => {
-            return comment.user.type === 'Bot' && comment.body.includes('Terraform Initialization')
+            const { job } = context.job;
+            return comment.user.type === 'Bot' && comment.body.includes(commentToken)
           })
 
           // 2. Prepare format of the comment
-          let output = `#### Terraform plan in **${{ inputs.path }}**
+          let output = `#### ${commentToken}
           #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
           `;
 
