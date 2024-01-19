@@ -30,6 +30,7 @@ runs:
       id: init
       shell: bash
       working-directory: ${{ inputs.path }}
+      continue-on-error: true
       run: terraform init
 
     - name: terraform validate
@@ -87,10 +88,14 @@ runs:
             planOutput = `${{ steps.plan.outputs.stderr }}`;
           }
 
-          let output = `#### ${commentToken}
-          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+          let output = `${commentToken}
           `;
 
+          // init
+          output += `#### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+          `;
+
+          // validate
           output += `#### Validation 🤖\`${{ steps.validate.outcome }}\`
           <details><summary>Validation Output</summary>
 
@@ -101,6 +106,7 @@ runs:
 
           `;
 
+          // plan
           output += `#### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
           <details><summary>Show Plan</summary>
 
