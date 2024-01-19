@@ -1,5 +1,44 @@
 ## Example usage
 
+### Run `terraform apply` on push to main branch
+
+This also triggers when a pull request is merged
+
+#### apply.yaml
+
+```yaml
+name: terraform apply
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    name: terraform apply
+    env:
+      # Terraform accepts assigning variables via environment variables in a
+      # form of `TF_VAR_<name>`. https://developer.hashicorp.com/terraform/language/values/variables#environment-variables
+      # Sensitive variables. Environment specific & repository level variables
+      # will be available to the action.
+      #
+      # Environment secrets doc: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-an-environment
+      # Repository secrets doc: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
+      TF_VAR_top_secret: ${{ secrets.TOP_SECRET }}
+      # non-sensitive terraform variable
+      TF_VAR_variable1: ${{ vars.variable1 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: Verumex/terraform-actions/apply@main
+```
+
 ### plan on pull request open
 
 Open a PR to trigger `terraform plan`.
@@ -46,9 +85,9 @@ jobs:
           terraform_version: "1.5.4"
 ```
 
-### plan on pull request open, with cache
+### use cache to optimize plugins download
 
-Similar to the previous plan workflow, but we add an additional step to retrieve
+Similar to the previous example workflows, we may add an additional step to retrieve
 plugin cache. The workflow environment `TF_PLUGIN_CACHE_DIR` is required for
 caching to work.
 
