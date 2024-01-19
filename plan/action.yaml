@@ -16,9 +16,6 @@ outputs:
   validate:
     description: terraform validate output
     value: ${{ steps.validate.outputs.stdout }}
-  fmt-check:
-    description: terraform linting output
-    value: ${{ steps.fmt-check.outputs.stdout }}
   plan:
     description: terraform plan output
     value: ${{ steps.plan.outputs.stdout }}
