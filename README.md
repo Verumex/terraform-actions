@@ -36,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: Verumex/terraform-actions/apply@main
+      - uses: Verumex/terraform-actions/apply@v1
 ```
 
 ### plan on pull request open
@@ -79,7 +79,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: Verumex/terraform-actions/plan@main
+      - uses: Verumex/terraform-actions/plan@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           terraform_version: "1.5.4"
@@ -109,7 +109,7 @@ steps:
       # repository root.
       key: ${{ runner.os }}-${{ hashFiles('./.terraform.lock.hcl') }}
 
-  - uses: Verumex/terraform-actions/plan@main
+  - uses: Verumex/terraform-actions/plan@v1
     with:
       github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
