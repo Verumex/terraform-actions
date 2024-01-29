@@ -43,7 +43,7 @@ runs:
       id: plan
       shell: bash
       working-directory: ${{ inputs.path }}
-      run: terraform plan -no-color
+      run: terraform plan -no-color -lock=false -input=false
 
     - uses: actions/github-script@v7
       if: always()
