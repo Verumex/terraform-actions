@@ -43,13 +43,16 @@ runs:
       id: plan
       shell: bash
       working-directory: ${{ inputs.path }}
-      run: terraform plan -no-color -lock=false -input=false
+      run: |
+        terraform plan -no-color -lock=false -input=false -out=plan.tmp
+        terraform show -no-color plan.tmp > ${GITHUB_WORKSPACE}/plan.out
 
     - uses: actions/github-script@v7
       if: always()
       with:
         github-token: ${{ inputs.github_token }}
         script: |
+          const fs = require('fs')
           const jobId = context.job;
 
           // 1. Retrieve existing bot comments for the PR
@@ -82,7 +85,7 @@ runs:
 
           // Show errors if not planned successfully.
           if (planExitCode === '0') {
-            planOutput = `${{ steps.plan.outputs.stdout }}`;
+            planOutput = fs.readFileSync('plan.out', 'utf8')
           }
           else {
             planOutput = `${{ steps.plan.outputs.stderr }}`;
