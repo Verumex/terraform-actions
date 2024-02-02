@@ -85,6 +85,64 @@ jobs:
           terraform_version: "1.5.4"
 ```
 
+### Plan with custom backend config
+
+You can provide custom partial backend configuration to terraform during `terraform init` step. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
+This is useful when you manage AWS resources and use S3 backend that belongs to another AWS account.
+
+For example, you have an S3 backend config block.
+
+```hcl
+backend "s3" {
+  bucket         = "bucket-name"
+  key            = "path/to/state.tfstate"
+  region         = "us-east-1"
+  encrypt        = true
+}
+```
+
+and the backend bucket lives in another AWS account. We can pass custom [partial backend configurations](https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration)
+to load during init step without hard-coding or compromising secrets.
+
+#### plan.yaml
+
+```yaml
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    name: terraform plan
+    env:
+      # Main AWS user credentials used to manage resources
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: Verumex/terraform-actions/plan@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          terraform_version: "~1.5.0"
+          backend_config: |
+            # AWS IAM user credentials that owns the state S3 bucket
+            access_key = "${{ secrets.STATE_BACKEND_AWS_ACCESS_KEY_ID }}"
+            secret_key = "${{ secrets.STATE_BACKEND_AWS_SECRET_ACCESS_KEY }}"
+```
+
+Both `access_key` and `secret_key` will come from `backend_config` input, equivelent to.
+
+```hcl
+backend "s3" {
+  bucket     = "bucket-name"
+  key        = "path/to/state.tfstate"
+  region     = "us-east-1"
+  encrypt    = true
+  # supplement configs from github action input `backend_config`
+  access_key = "AX............"
+  secret_key = "efym.........."
+}
+```
+
 ### use cache to optimize plugins download
 
 Similar to the previous example workflows, we may add an additional step to retrieve
@@ -129,6 +187,10 @@ steps:
   - type: String
   - optional
   - default: `"./"`
+- `backend_config` - (optional) Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
+  - type: String
+  - optional
+  - default: `""`
 
 ### apply
 
@@ -140,3 +202,7 @@ steps:
   - type: String
   - optional
   - default: `"./"`
+- `backend_config` - (optional) Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
+  - type: String
+  - optional
+  - default: `""`
