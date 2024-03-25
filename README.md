@@ -143,7 +143,7 @@ backend "s3" {
 }
 ```
 
-### use cache to optimize plugins download
+### Use cache to optimize plugins download
 
 Similar to the previous example workflows, we may add an additional step to retrieve
 plugin cache. The workflow environment `TF_PLUGIN_CACHE_DIR` is required for
@@ -172,6 +172,12 @@ steps:
       github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+### Use generated plan
+
+The plan is uploaded as a GitHub Workflow Run Artifact and named per input `plan_artifact_name`. The action also has as outputs the typical:
+- artifact-id
+- artifact-url
+
 ## Inputs
 
 ### plan
@@ -187,6 +193,14 @@ steps:
   - type: String
   - optional
   - default: `"./"`
+- `plan_artifact_name` - (optional) The name of the GitHub Actions Run Artifact holding the uploaded plan
+  - type: String
+  - optional
+  - default: `"artifact"`
+- `custom_job_id` - (optional) The name of the GitHub Job to use to identify a plan comment initially and subsequently
+  - type: String
+  - optional
+  - default: `""`; the action will use the default `github.job` [context variable](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context) if undefined
 - `backend_config` - (optional) Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
   - type: String
   - optional

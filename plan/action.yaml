@@ -12,6 +12,14 @@ inputs:
     description: path to terraform configurations
     required: true
     default: "./"
+  plan_artifact_name:
+    description: output plan artifact name
+    required: true
+    default: "artifact"
+  custom_job_id:
+    description: custom job name to distinguish between similar plan steps run in a dynamic manner (e.g. matrix strategy)
+    required: false
+    default: ""
   backend_config:
     description: Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
     required: false
@@ -23,6 +31,12 @@ outputs:
   plan:
     description: terraform plan output
     value: ${{ steps.plan.outputs.stdout }}
+  plan_artifact_id:
+    description: plan GitHub artifact id
+    value: ${{ steps.upload.outputs.artifact-id }}
+  plan_artifact_url:
+    description: plan GitHub artifact url
+    value: ${{ steps.upload.outputs.artifact-url }}
 runs:
   using: "composite"
   steps:
@@ -58,13 +72,27 @@ runs:
         terraform plan -no-color -lock=false -input=false -out=plan.tmp
         terraform show -no-color plan.tmp > ${GITHUB_WORKSPACE}/plan.out
 
+    - name: upload terraform plan
+      id: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.plan_artifact_name }}
+        path: ${{ inputs.path }}/plan.tmp
+        if-no-files-found: error
+        overwrite: true
+
     - uses: actions/github-script@v7
       if: ${{ github.event_name == 'pull_request' }}
       with:
         github-token: ${{ inputs.github_token }}
         script: |
           const fs = require('fs')
-          const jobId = context.job;
+
+          const defaultJobId = context.job;
+          const customJobId = `${{ inputs.custom_job_id }}`
+          const jobId = customJobId.length > 0 ? customJobId : defaultJobId;
+          
+          const maxPlanChars = 65000;
 
           // 1. Retrieve existing bot comments for the PR
           const { data: comments } = await github.rest.issues.listComments({
@@ -74,7 +102,7 @@ runs:
           });
 
           // To identify a correct bot comment when many plan comments exist
-          const commentToken = `Terraform plan in **${jobId}**`;
+          const commentToken = `### Terraform plan in **${jobId}**`;
           const botComment = comments.find(comment => {
             const { job } = context.job;
             return comment.user.type === 'Bot' && comment.body.includes(commentToken)
@@ -84,7 +112,7 @@ runs:
           const validateExitCode = '${{ steps.validate.outputs.exitcode }}';
           const planExitCode = '${{ steps.plan.outputs.exitcode }}';
 
-          let planOutput = '', validateOutput = '';
+          let rawPlanOutput = '', planOutput = '', validateOutput = '';
 
           // Show errors if not validated successfully
           if (validateExitCode === '0') {
@@ -96,11 +124,15 @@ runs:
 
           // Show errors if not planned successfully.
           if (planExitCode === '0') {
-            planOutput = fs.readFileSync('plan.out', 'utf8')
+            rawPlanOutput = fs.readFileSync('plan.out', 'utf8')
           }
           else {
-            planOutput = `${{ steps.plan.outputs.stderr }}`;
+            rawPlanOutput = `${{ steps.plan.outputs.stderr }}`;
           }
+
+          // Show the last maxPlanChars characters of the plan output if too long
+          const isPlanOutputTooLong = rawPlanOutput.length > maxPlanChars;
+          planOutput = isPlanOutputTooLong ? `[...]\n\n${rawPlanOutput.substring(rawPlanOutput.length - maxPlanChars, rawPlanOutput.length)}` : rawPlanOutput;
 
           let output = `${commentToken}
           `;
@@ -131,7 +163,18 @@ runs:
 
           `;
 
-          output += `*Pusher: @${{ github.actor }}*`;
+          if (isPlanOutputTooLong) {
+            output += `Plan output was truncated due to being too long. You can download the full plan from [GitHub Actions](${{ steps.upload.outputs.artifact-url }}).
+            
+            `;
+          }
+          else {
+            output += `You can also download the full plan from [GitHub Actions](${{ steps.upload.outputs.artifact-url }}).
+            
+            `;
+          }
+
+          output += `*Pusher: @${{ github.actor }}, SHA: ${{ github.sha }}, Run: ${{ github.run_id }}*`;
 
           // 3. If we have a comment, update it, otherwise create a new one
           if (botComment) {
