@@ -9,6 +9,9 @@ inputs:
     description: path to terraform configurations
     required: true
     default: "./"
+  plan_path:
+    description: path to a terraform plan file to reuse
+    required: false
   backend_config:
     description: Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
     required: false
@@ -41,4 +44,22 @@ runs:
       id: apply
       shell: bash
       working-directory: ${{ inputs.path }}
-      run: terraform apply -auto-approve -input=false -no-color 2>&1
+      env:
+        IS_VMX_PLAN_PATH_DEFINED: ${{ inputs.plan_path != '' }}
+        VMX_PLAN_PATH: ${{ inputs.plan_path }}
+      run: |
+        if [ "$IS_VMX_PLAN_PATH_DEFINED" == "true" ]; then
+          if [ -f "$VMX_PLAN_PATH" ]; then
+            echo -e "Running from cached Terraform Plan at $VMX_PLAN_PATH...\n"
+            echo -e "Showing cached plan...\n"
+            terraform show -no-color "$VMX_PLAN_PATH"
+
+            echo -e "Applying cached plan...\n"
+            terraform apply -auto-approve -input=false -no-color "$VMX_PLAN_PATH" 2>&1
+          else
+            echo "A path to a Terraform Plan equal to $VMX_PLAN_PATH was provided, but it does not represent a file!" 1>&2
+            exit 1
+          fi
+        else
+          terraform apply -auto-approve -input=false -no-color 2>&1
+        fi

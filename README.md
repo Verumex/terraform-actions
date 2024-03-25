@@ -216,6 +216,9 @@ The plan is uploaded as a GitHub Workflow Run Artifact and named per input `plan
   - type: String
   - optional
   - default: `"./"`
+- `plan_path` - (optional) Path to a Terraform Plan file to reuse
+  - type: String
+  - optional
 - `backend_config` - (optional) Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
   - type: String
   - optional
