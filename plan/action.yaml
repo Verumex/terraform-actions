@@ -20,6 +20,10 @@ inputs:
     description: custom job name to distinguish between similar plan steps run in a dynamic manner (e.g. matrix strategy)
     required: false
     default: ""
+  quiet_output:
+    description: a boolean flag controling whether the output is quieted for noisy terraform commands
+    required: false
+    default: "false"
   backend_config:
     description: Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
     required: false
@@ -68,9 +72,16 @@ runs:
       id: plan
       shell: bash
       working-directory: ${{ inputs.path }}
+      env:
+        INPUT_QUIET_TERRAFORM_OUTPUT: ${{ inputs.quiet_output }}
       run: |
-        terraform plan -no-color -lock=false -input=false -out=plan.tmp
-        terraform show -no-color plan.tmp > ${GITHUB_WORKSPACE}/plan.out
+        if [ "$INPUT_QUIET_TERRAFORM_OUTPUT" == "true" ]; then
+          terraform plan -no-color -lock=false -input=false -out=plan.tmp 1> /dev/null
+          terraform show -no-color plan.tmp | tee -a ${GITHUB_WORKSPACE}/plan.out
+        else
+          terraform plan -no-color -lock=false -input=false -out=plan.tmp
+          terraform show -no-color plan.tmp > ${GITHUB_WORKSPACE}/plan.out
+        fi
 
     - name: upload terraform plan
       id: upload

@@ -12,6 +12,10 @@ inputs:
   plan_path:
     description: path to a terraform plan file to reuse
     required: false
+  quiet_output:
+    description: a boolean flag controling whether the output is quieted for noisy terraform commands
+    required: false
+    default: "false"
   backend_config:
     description: Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
     required: false
@@ -45,21 +49,32 @@ runs:
       shell: bash
       working-directory: ${{ inputs.path }}
       env:
+        INPUT_VMX_PLAN_PATH: ${{ inputs.plan_path }}
+        INPUT_QUIET_TERRAFORM_OUTPUT: ${{ inputs.quiet_output }}
         IS_VMX_PLAN_PATH_DEFINED: ${{ inputs.plan_path != '' }}
-        VMX_PLAN_PATH: ${{ inputs.plan_path }}
       run: |
         if [ "$IS_VMX_PLAN_PATH_DEFINED" == "true" ]; then
-          if [ -f "$VMX_PLAN_PATH" ]; then
-            echo -e "Running from cached Terraform Plan at $VMX_PLAN_PATH...\n"
+          if [ -f "$INPUT_VMX_PLAN_PATH" ]; then
+            echo -e "Running from cached Terraform Plan at $INPUT_VMX_PLAN_PATH...\n"
             echo -e "Showing cached plan...\n"
-            terraform show -no-color "$VMX_PLAN_PATH"
+            terraform show -no-color "$INPUT_VMX_PLAN_PATH"
 
             echo -e "Applying cached plan...\n"
-            terraform apply -auto-approve -input=false -no-color "$VMX_PLAN_PATH" 2>&1
+            if [ "$INPUT_QUIET_TERRAFORM_OUTPUT" == "true" ]; then
+              terraform refresh -input=false -no-color 1> /dev/null
+              terraform apply -refresh=false -auto-approve -input=false -no-color "$INPUT_VMX_PLAN_PATH" 2>&1
+            else
+              terraform apply -auto-approve -input=false -no-color "$INPUT_VMX_PLAN_PATH" 2>&1
+            fi
           else
-            echo "A path to a Terraform Plan equal to $VMX_PLAN_PATH was provided, but it does not represent a file!" 1>&2
+            echo "A path to a Terraform Plan equal to $INPUT_VMX_PLAN_PATH was provided, but it does not represent a file!" 1>&2
             exit 1
           fi
         else
-          terraform apply -auto-approve -input=false -no-color 2>&1
+          if [ "$INPUT_QUIET_TERRAFORM_OUTPUT" == "true" ]; then
+            terraform refresh -input=false -no-color 1> /dev/null
+            terraform apply -refresh=false -auto-approve -input=false -no-color 2>&1
+          else
+            terraform apply -auto-approve -input=false -no-color 2>&1
+          fi
         fi
