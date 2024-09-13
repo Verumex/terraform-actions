@@ -16,6 +16,10 @@ inputs:
     description: output plan artifact name
     required: true
     default: "artifact"
+  plan_artifact_retention_days:
+    description: number of days for the plan artifact to be retained
+    required: false
+    default: "1"
   custom_job_id:
     description: custom job name to distinguish between similar plan steps run in a dynamic manner (e.g. matrix strategy)
     required: false
@@ -91,6 +95,7 @@ runs:
         path: ${{ inputs.path }}/plan.tmp
         if-no-files-found: error
         overwrite: true
+        retention-days: ${{ inputs.plan_artifact_retention_days }}
 
     - uses: actions/github-script@v7
       if: ${{ github.event_name == 'pull_request' }}
