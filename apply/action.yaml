@@ -20,10 +20,6 @@ inputs:
     description: Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
     required: false
     default: ""
-outputs:
-  apply:
-    description: terraform plan output
-    value: ${{ steps.apply.outputs.stdout }}
 runs:
   using: "composite"
   steps:

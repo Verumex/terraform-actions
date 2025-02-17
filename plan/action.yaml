@@ -36,9 +36,6 @@ outputs:
   validate:
     description: terraform validate output
     value: ${{ steps.validate.outputs.stdout }}
-  plan:
-    description: terraform plan output
-    value: ${{ steps.plan.outputs.stdout }}
   plan_artifact_id:
     description: plan GitHub artifact id
     value: ${{ steps.upload.outputs.artifact-id }}
