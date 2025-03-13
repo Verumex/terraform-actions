@@ -1,0 +1,44 @@
+name: terraform destroy
+description: Destroy resources managed by terraform
+inputs:
+  terraform_version:
+    description: Version of terraform
+    required: true
+    default: "1.5.7"
+  path:
+    description: path to terraform configurations
+    required: true
+    default: "./"
+  plan_path:
+    description: path to a terraform plan file to reuse
+    required: false
+  backend_config:
+    description: Additional backend configuration to use during 'terraform init'. See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration.
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: terraform init
+      id: init
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        # put terraform backend partial configuration into a file.
+        # See https://developer.hashicorp.com/terraform/language/settings/backends/configuration#partial-configuration
+        cat <<EOT > ${{ runner.temp }}/backend.tf
+        ${{ inputs.backend_config }}
+        EOT
+
+        terraform init -backend-config=${{ runner.temp }}/backend.tf
+
+    - name: terraform destroy
+      id: apply
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        terraform destroy -auto-approve
